@@ -3,7 +3,7 @@ const request = axios.create({
   baseURL: 'http://localhost:5900/jex/',
   timeout: 12000
 })
-Jex.User = function() {
+Jex.User = function () {
   this.isUseCapture = false
   return {
     useCapture: (flg) => {
@@ -57,7 +57,7 @@ Jex.User = function() {
         }
         email && (body.email = email)
         phone && (body.phone = phone)
-
+        
         if (this.isUseCapture) {
           if (!capture) {
             reject('验证码不能为空')
@@ -106,8 +106,41 @@ Jex.Query = function (tableName) {
   this.tableName = tableName
   this.map = {}
   this.order = {}
+  this.selects = []
+  this.unSelects = []
+  this.equalOptions = {}
+  this.orOptions = []
+  this.andOptions = []
   
-	return {
+  return {
+    increment: (_id, incrementObj = {}) => {
+      return new Promise(((resolve, reject) => {
+        if (typeof _id !== 'string') {
+          reject('_id必须是字符串')
+          return
+        }
+        if (!_id) {
+          reject('_id不能为空')
+          return
+        }
+        if (Object.keys(incrementObj).length === 0) {
+          reject('至少要设置计数的字段名称')
+          return
+        }
+        request({
+          url: `/increment/${this.tableName}`,
+          method: 'post',
+          data: {
+            _id,
+            incrementObj
+          }
+        }).then((res) => {
+          resolve(res.data)
+        }).catch(err => {
+          reject(err)
+        })
+      }))
+    },
     skip: (skipNumber) => {
       this.skipNumber = skipNumber
     },
@@ -139,15 +172,56 @@ Jex.Query = function (tableName) {
         })
       })
     },
-    // 等于
-    equalTo: () => {},
+    /**
+     * 比较函数
+     * @param field 字段名
+     * @param operator  操作符 >、<、===、<=、>=、!==
+     * @param value 字段值
+     */
+    equalTo: (field, operator, value) => {
+      if (!field || !operator || !value) {
+        throw new Error('参数一个都不能少')
+      }
+      const operatorMap = {
+        '>': '$gt',
+        '<': '$lt',
+        '===': '$eq',
+        '>=': '$gte',
+        '<=': '$lte',
+        '!==': '$ne',
+      }
+      const equalOptionsValue = this.equalOptions[field]
+      if (equalOptionsValue) {
+        equalOptionsValue[operatorMap[operator]] = value
+      } else {
+        this.equalOptions[field] = { [operatorMap[operator]]: value }
+      }
+      return { [field]: { [operatorMap[operator]]: value } }
+    },
     // 或查询
-    or: () => {},
+    or: (...querys) => {
+      this.orOptions = querys
+    },
+    // 且查询
+    and: (...querys) => {
+      this.andOptions = querys
+    },
+    // select 和 unSelect 只能有一个，谁写在上面谁有用
     // 查询指定列
-    select: () => {},
+    select: (...fields) => {
+      if (this.unSelects.length === 0) {
+        this.selects = fields
+      }
+    },
+    // 那些列不选
+    unSelect: (...fields) => {
+      if (this.selects.length === 0) {
+        this.unSelects = fields
+      }
+    },
     // 查询
     get: (query) => {
-			return new Promise((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         let body = {}
         if (typeof query === 'string') {
           body.query = query
@@ -158,12 +232,32 @@ Jex.Query = function (tableName) {
           }
         }
         
+        if (this.orOptions.length === 0 && this.andOptions.length === 0) {
+          if (Object.keys(this.equalOptions).length > 0) {
+            body.query = Object.assign({}, body.query, this.equalOptions)
+          }
+        }
+        
+        if (this.orOptions.length > 0) {
+          body.query = Object.assign({}, body.query, { $or: this.orOptions })
+        }
+        
+        if (this.andOptions.length > 0) {
+          body.query = Object.assign({}, body.query, { $and: this.andOptions })
+        }
+        
         body.page = {
           skipNumber: this.skipNumber,
           limitNumber: this.limitNumber
         }
         if (Object.keys(this.order).length > 0) {
           body.order = this.order
+        }
+        if (this.selects.length > 0) {
+          body.selects = this.selects
+        }
+        if (this.unSelects.length > 0) {
+          body.unSelects = this.unSelects
         }
         request({
           url: `/get/${this.tableName}`,
@@ -203,7 +297,7 @@ Jex.Query = function (tableName) {
           resolve(res.data)
         }).catch(err => {
           reject(err)
-        }) 
+        })
       })
     },
     // 删除
@@ -234,7 +328,7 @@ Jex.Query = function (tableName) {
   }
 }
 
-Jex.File = function() {
+Jex.File = function () {
   return {
     save: () => {}
   }
