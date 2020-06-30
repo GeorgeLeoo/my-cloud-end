@@ -59,13 +59,3 @@ query.save().then(res => {
   console.log(err)
 })
 
-
-Router.post('/tableName', async function (req, res) {
-  let body = req.body
-  if (body.method === 'get') {
-  
-  }
-  if (body.method === 'post') {}
-  if (body.method === 'put') {}
-  if (body.method === 'delete') {}
-})
