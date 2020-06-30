@@ -66,7 +66,7 @@ Jex.User = function() {
           body.capture = capture
         }
         request({
-          url: `/user/sing-up`,
+          url: `/user/sign-up`,
           method: 'post',
           data: body
         }).then((res) => {

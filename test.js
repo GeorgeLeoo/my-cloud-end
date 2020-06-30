@@ -33,3 +33,9 @@ const query = Jex.Query('Bank')
 //   console.log(err)
 // })
 
+const user = Jex.User()
+user.current().then(res => {
+  console.log(res)
+}).catch(err => {
+  console.log(err)
+})
