@@ -112,6 +112,7 @@ Jex.Query = function (tableName) {
   this.orOptions = []
   this.andOptions = []
   this.statOptions = []
+  this.referenceOptions = []
   
   return {
     statTo(operation, field) {
@@ -134,7 +135,37 @@ Jex.Query = function (tableName) {
      * unselect： 不要显示字段名称
      */
     reference: (...references) => {
-      // [{'Admin': {select: [], unselect: []}]
+      // [{ 'Users': { select: ['username', 'email'], unselect: ['password'] } }]
+      const simple = references.every(v => typeof v === 'string')
+      if (simple) {
+        references.map(path => {
+          this.referenceOptions.push({ path })
+        })
+        return
+      }
+      references.map(v => {
+        const ref = Object.keys(v)[0]
+        const refValue = v[ref]
+        const refObject = { path: ref }
+        const options = Object.keys(refValue)
+        const select = {}
+        options.map( option => {
+          if (option === 'select') {
+            refValue[option].map(val => {
+              select[val] = 1
+            })
+          }
+          if (option === 'unselect') {
+            refValue[option].map(val => {
+              select[val] = 0
+            })
+          }
+        })
+        if (Object.keys(select).length !== 0) {
+          refObject.select = select
+        }
+        this.referenceOptions.push(refObject)
+      })
     },
     increment: (_id, incrementObj = {}) => {
       return new Promise(((resolve, reject) => {
@@ -282,6 +313,13 @@ Jex.Query = function (tableName) {
         if (this.unSelects.length > 0) {
           body.unSelects = this.unSelects
         }
+        if (this.referenceOptions.length > 0) {
+          if (this.referenceOptions.length === 1) {
+            body.reference = this.referenceOptions[0]
+          } else {
+            body.reference = this.referenceOptions
+          }
+        }
         request({
           url: `/get/${this.tableName}`,
           method: 'post',
@@ -313,7 +351,7 @@ Jex.Query = function (tableName) {
           url: `/post/${this.tableName}`,
           method: 'post',
           data: {
-            data,
+            data: body,
             query
           }
         }).then((res) => {
