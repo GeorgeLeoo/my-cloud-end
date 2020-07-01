@@ -111,8 +111,31 @@ Jex.Query = function (tableName) {
   this.equalOptions = {}
   this.orOptions = []
   this.andOptions = []
+  this.statOptions = []
   
   return {
+    statTo(operation, field) {
+      const operationMap = {
+        groupby: 'groupby',
+        groupcoun: 'groupcoun',
+        sum: 'sum',
+        average: 'average',
+        max: 'max',
+        min: 'min',
+        having: 'having',
+      }
+    },
+    /**
+     * 关联表
+     * 格式：
+     * { 'TableName': { select:['column1', 'column2', ...], unselect: ['column3', 'column4', ...] } }
+     * TableName: 表名
+     * select：要显示字段名称
+     * unselect： 不要显示字段名称
+     */
+    reference: (...references) => {
+      // [{'Admin': {select: [], unselect: []}]
+    },
     increment: (_id, incrementObj = {}) => {
       return new Promise(((resolve, reject) => {
         if (typeof _id !== 'string') {
